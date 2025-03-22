@@ -1,1 +1,88 @@
-
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINE アンケート API</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      h1 {
+        color: #06C755;
+        border-bottom: 2px solid #06C755;
+        padding-bottom: 10px;
+      }
+      .card {
+        background: #f9f9f9;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      code {
+        background: #eee;
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-family: monospace;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 10px;
+        border-radius: 5px;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>LINE アンケート API</h1>
+      
+      <div class="card">
+        <h2>概要</h2>
+        <p>このAPIはLINE LIFFアプリからのアンケートデータを受け取り、Googleスプレッドシートに保存します。</p>
+      </div>
+      
+      <div class="card">
+        <h2>使用方法</h2>
+        <p>このAPIはPOSTリクエストで以下のJSONデータを受け付けます：</p>
+        <pre>{
+  "lineUserId": "U1234567890abcdef1234567890abcdef",
+  "name": "山田太郎",
+  "age": "30代",
+  "assessmentType": "不動産",
+  "detail": "2LDKマンションの査定をお願いします"
+}</pre>
+      </div>
+      
+      <div class="card">
+        <h2>レスポンス形式</h2>
+        <p>成功時のレスポンス：</p>
+        <pre>{
+  "success": true,
+  "message": "データが正常に保存されました",
+  "timestamp": "2025-03-21T12:34:56.789Z"
+}</pre>
+        <p>エラー時のレスポンス：</p>
+        <pre>{
+  "success": false,
+  "message": "データの保存中にエラーが発生しました",
+  "error": "エラーの詳細情報"
+}</pre>
+      </div>
+      
+      <div class="card">
+        <h2>セキュリティ</h2>
+        <p>このAPIは公開されていますが、LINE LIFF環境からの正規のリクエストのみを想定しています。</p>
+      </div>
+    </div>
+  </body>
+</html>
