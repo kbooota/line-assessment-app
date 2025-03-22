@@ -46,16 +46,8 @@
             margin: 20px 0;
             color: #dc3545;
         }
-        #debugInfo {
+        iframe {
             display: none;
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-            white-space: pre-wrap;
         }
     </style>
 </head>
@@ -70,7 +62,12 @@
             </div>
         </div>
         
-        <form id="surveyForm" style="display: none;">
+        <form id="surveyForm" style="display: none;" target="hiddenFrame">
+            <!-- 非表示フィールド - LINEユーザー情報用 -->
+            <input type="hidden" id="userId" name="userId" value="">
+            <input type="hidden" id="displayName" name="displayName" value="">
+            <input type="hidden" id="timestamp" name="timestamp" value="">
+            
             <!-- 質問1 -->
             <div class="mb-4">
                 <label for="question1" class="form-label">Q1: 当サービスをどのように知りましたか？</label>
@@ -120,6 +117,9 @@
             </div>
         </form>
         
+        <!-- 非表示iframeでフォーム送信結果を受け取る -->
+        <iframe name="hiddenFrame" id="hiddenFrame"></iframe>
+        
         <div id="loading" class="loading">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
@@ -137,10 +137,6 @@
             <p><strong>エラーが発生しました</strong></p>
             <p>もう一度お試しください。</p>
             <button id="retryBtn" class="btn btn-outline-primary">再試行</button>
-            <div class="mt-2">
-                <button id="showDebugBtn" class="btn btn-sm btn-outline-secondary">詳細を表示</button>
-            </div>
-            <div id="debugInfo"></div>
         </div>
     </div>
 
@@ -150,159 +146,110 @@
         document.addEventListener('DOMContentLoaded', () => {
             // LIFF初期化
             const liffId = "2007103197-aQzRZN9v"; // LIFF IDを設定
-            const gasUrl = "https://script.google.com/macros/s/AKfycbwKC7MApmRWARS9z22x9hZxqSMuLt3uy7GMuG6xdB58uGBKy_JrmOjDZCp8CbuqW4tO/exec"; // Google Apps ScriptのURLを設定
+            const gasUrl = "https://script.google.com/a/macros/brandoff.co.jp/s/AKfycbxs4gwgCqe6JCsr5Be5At6nbNuSmGdn1rNQDZqTQgx8CZHhOkKP43mbPwFgtJSpdjMG/exec"; // Google Apps ScriptのURLを設定
             
             let userProfile = null;
-            let debugMessages = [];
             
-            function addDebugMessage(message) {
-                const timestamp = new Date().toISOString();
-                debugMessages.push(`${timestamp}: ${message}`);
-                console.log(message);
-            }
-            
-            function updateDebugInfo() {
-                const debugInfoElement = document.getElementById('debugInfo');
-                debugInfoElement.textContent = debugMessages.join('\n');
-            }
+            // フォームの送信先URLを設定
+            document.getElementById('surveyForm').action = gasUrl;
+            document.getElementById('surveyForm').method = 'post';
             
             // LIFF初期化
-            addDebugMessage("LIFF初期化を開始します");
+            console.log("LIFF初期化を開始します");
             liff.init({
                 liffId: liffId
             }).then(() => {
-                addDebugMessage("LIFF initialized successfully");
+                console.log("LIFF initialized successfully");
                 
                 // ログイン状態のチェック
                 if (!liff.isLoggedIn()) {
-                    addDebugMessage("ユーザーはログインしていません");
+                    console.log("ユーザーはログインしていません");
                     document.getElementById('loginRequired').style.display = 'block';
                 } else {
-                    addDebugMessage("ユーザーはログイン済みです");
+                    console.log("ユーザーはログイン済みです");
                     // ユーザープロフィール取得
                     liff.getProfile().then(profile => {
                         userProfile = profile;
-                        addDebugMessage(`プロフィール取得成功: ${profile.displayName}`);
+                        console.log(`プロフィール取得成功: ${profile.displayName}`);
+                        
+                        // ユーザー情報をフォームのhidden項目に設定
+                        document.getElementById('userId').value = profile.userId;
+                        document.getElementById('displayName').value = profile.displayName;
+                        document.getElementById('timestamp').value = new Date().toISOString();
+                        
                         document.getElementById('surveyForm').style.display = 'block';
                     }).catch(err => {
-                        addDebugMessage(`プロフィール取得エラー: ${err.message}`);
                         console.error("Error getting profile", err);
                     });
                 }
             }).catch(err => {
-                addDebugMessage(`LIFF初期化エラー: ${err.message}`);
                 console.error("Error initializing LIFF", err);
             });
             
             // ログインボタン
             document.getElementById('loginBtn').addEventListener('click', () => {
-                addDebugMessage("ログインボタンがクリックされました");
                 liff.login();
             });
             
             // フォーム送信
-            document.getElementById('surveyForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                addDebugMessage("フォーム送信が開始されました");
+            document.getElementById('surveyForm').addEventListener('submit', (e) => {
+                console.log("フォーム送信が開始されました");
+                
+                // タイムスタンプ更新
+                document.getElementById('timestamp').value = new Date().toISOString();
                 
                 // 送信中表示
                 document.getElementById('surveyForm').style.display = 'none';
                 document.getElementById('loading').style.display = 'block';
+            });
+            
+            // iframe読み込み完了イベント（レスポンス受信）
+            document.getElementById('hiddenFrame').addEventListener('load', (e) => {
+                // 初回ロード時は無視
+                if (!document.getElementById('loading').style.display || document.getElementById('loading').style.display === 'none') {
+                    return;
+                }
                 
-                // フォームデータ取得
-                const formData = {
-                    timestamp: new Date().toISOString(),
-                    userId: userProfile.userId,
-                    displayName: userProfile.displayName,
-                    question1: document.getElementById('question1').value,
-                    question2: document.querySelector('input[name="question2"]:checked').value,
-                    question3: document.getElementById('question3').value,
-                };
-                
-                addDebugMessage(`フォームデータ: ${JSON.stringify(formData)}`);
-                addDebugMessage(`GAS URL: ${gasUrl}`);
-                
-                // Google Apps ScriptにPOST
                 try {
-                    addDebugMessage("Google Apps Scriptへのリクエスト送信開始");
-                    const response = await fetch(gasUrl, {
-                        method: 'POST',
-                        mode: 'cors', // CORSモードを明示的に指定
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(formData),
-                        redirect: 'follow' // リダイレクトを自動的に処理
-                    });
+                    const frameContent = document.getElementById('hiddenFrame').contentDocument || 
+                                         document.getElementById('hiddenFrame').contentWindow.document;
                     
-                    addDebugMessage(`レスポンスステータス: ${response.status} ${response.statusText}`);
+                    // レスポンスのテキスト取得
+                    const responseText = frameContent.body.innerText || frameContent.body.textContent;
+                    console.log("レスポンス:", responseText);
                     
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
-                    
-                    const contentType = response.headers.get("content-type");
-                    addDebugMessage(`レスポンスのContent-Type: ${contentType}`);
-                    
-                    let result;
-                    if (contentType && contentType.includes("application/json")) {
-                        result = await response.json();
-                        addDebugMessage(`レスポンスJSON: ${JSON.stringify(result)}`);
-                    } else {
-                        const text = await response.text();
-                        addDebugMessage(`レスポンステキスト: ${text}`);
-                        try {
-                            // JSONかもしれないので試してみる
-                            result = JSON.parse(text);
-                        } catch (e) {
-                            // JSONでなければエラー
-                            throw new Error(`レスポンスがJSONではありません: ${text}`);
-                        }
+                    // JSON解析
+                    let response;
+                    try {
+                        response = JSON.parse(responseText);
+                    } catch (e) {
+                        // JSONでない場合はそのまま処理
+                        response = { success: responseText.includes("success") };
                     }
                     
                     document.getElementById('loading').style.display = 'none';
                     
-                    if (result.success) {
-                        addDebugMessage("フォーム送信成功");
+                    if (response && response.success) {
                         document.getElementById('successMessage').style.display = 'block';
                     } else {
-                        addDebugMessage(`サーバーエラー: ${result.message || "Unknown error"}`);
-                        throw new Error(result.message || "Unknown error");
+                        document.getElementById('errorMessage').style.display = 'block';
                     }
                 } catch (error) {
-                    addDebugMessage(`エラー発生: ${error.message}`);
-                    console.error("Error submitting form:", error);
+                    console.error("Response handling error:", error);
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('errorMessage').style.display = 'block';
                 }
-                
-                updateDebugInfo();
             });
             
             // 閉じるボタン
             document.getElementById('closeBtn').addEventListener('click', () => {
-                addDebugMessage("閉じるボタンがクリックされました");
                 liff.closeWindow();
             });
             
             // 再試行ボタン
             document.getElementById('retryBtn').addEventListener('click', () => {
-                addDebugMessage("再試行ボタンがクリックされました");
                 document.getElementById('errorMessage').style.display = 'none';
                 document.getElementById('surveyForm').style.display = 'block';
-            });
-            
-            // デバッグ情報表示ボタン
-            document.getElementById('showDebugBtn').addEventListener('click', () => {
-                const debugInfoElement = document.getElementById('debugInfo');
-                if (debugInfoElement.style.display === 'none' || !debugInfoElement.style.display) {
-                    updateDebugInfo();
-                    debugInfoElement.style.display = 'block';
-                    document.getElementById('showDebugBtn').textContent = '詳細を隠す';
-                } else {
-                    debugInfoElement.style.display = 'none';
-                    document.getElementById('showDebugBtn').textContent = '詳細を表示';
-                }
             });
         });
     </script>
